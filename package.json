@@ -35,9 +35,9 @@
 				"command": "extension.myTreeView.downloadMostRecent",
 				"title": "Download most recent file",
 				"shortTitle": "Download",
-				"enablement": "view == extension.myTreeView && viewItem == archive",
+				"enablement": "view == extension.myTreeView && viewItem == archiveWithFiles",
 				"icon": "$(cloud-download)",
-				"when": "view == extension.myTreeView && viewItem == archive"
+				"when": "view == extension.myTreeView && viewItem == archiveWithFiles"
 			},
 			{
 				"command": "extension.myTreeView.downloadFile",
@@ -52,7 +52,7 @@
 				"title": "Delete Archive",
 				"shortTitle": "Delete",
 				"icon": "$(trash)",
-				"when": "view == extension.myTreeView && viewItem == archive"
+				"when": "view == extension.myTreeView && viewItem == archive || viewItem == archiveWithFiles"
 			},
 			{
 				"command": "extension.myTreeView.filterPanel.filter",
@@ -86,7 +86,7 @@
 			"view/item/context": [
 				{
 					"command": "extension.myTreeView.downloadMostRecent",
-					"when": "view == extension.myTreeView && viewItem == archive",
+					"when": "view == extension.myTreeView && viewItem == archive || viewItem == archiveWithFiles",
 					"group": "inline@1"
 				},
 				{
@@ -96,7 +96,7 @@
 				},
 				{
 					"command": "extension.myTreeView.delete",
-					"when": "view == extension.myTreeView && viewItem == archive",
+					"when": "view == extension.myTreeView && viewItem == archive || viewItem == archiveWithFiles",
 					"group": "inline@2"
 				}
 			]

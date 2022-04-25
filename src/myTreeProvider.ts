@@ -95,7 +95,6 @@ class ArchiveNode extends TreeItem {
 
     constructor(public readonly data: Archive) {
         super(data.title, TreeItemCollapsibleState.Collapsed);
-        this.contextValue = "archive";
         this.tooltip = new MarkdownString(`$(globe) ${data.uuid}
 ___
 $(book) ${data.description}
@@ -104,6 +103,7 @@ $(clock) ${data.lastUpdated}
 `, true
         );
         this.iconPath = new ThemeIcon("archive");
+        this.contextValue = this.data.hasDownloadableContent ? 'archiveWithFiles' : "archive";
     }
 }
 
