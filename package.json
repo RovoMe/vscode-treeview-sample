@@ -1,0 +1,151 @@
+{
+  "name": "testtreeview",
+	"displayName": "TestTreeView",
+	"description": "",
+	"version": "0.0.1",
+	"engines": {
+		"vscode": "^1.66.0"
+	},
+	"icon": "$(list-tree)",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/RovoMe/vscode-treeview-sample.git"
+	},
+	"homepage": "https://github.com/RovoMe/vscode-treeview-sample",
+	"bugs": {
+		"url": "https://github.com/RovoMe/vscode-treeview-sample/issues"
+	},
+	"license": "MIT",
+	"categories": [
+		"Other"
+	],
+	"activationEvents": [
+        "onCommand:testtreeview.helloWorld",
+		"onView:extension.myTreeView"
+	],
+	"main": "./dist/extension.js",
+	"contributes": {
+		"commands": [
+			{
+				"command": "testtreeview.helloWorld",
+				"title": "Hello World"
+			},
+
+			{
+				"command": "extension.myTreeView.downloadMostRecent",
+				"title": "Download most recent file",
+				"shortTitle": "Download",
+				"enablement": "view == extension.myTreeView && viewItem == archive",
+				"icon": "$(cloud-download)",
+				"when": "view == extension.myTreeView && viewItem == archive"
+			},
+			{
+				"command": "extension.myTreeView.downloadFile",
+				"title": "Download file",
+				"shortTitle": "Download",
+				"enablement": "view == extension.myTreeView && viewItem == file",
+				"icon": "$(cloud-download)",
+				"when": "view == extension.myTreeView && viewItem == file"
+			},
+			{
+				"command": "extension.myTreeView.delete",
+				"title": "Delete Archive",
+				"shortTitle": "Delete",
+				"icon": "$(trash)",
+				"when": "view == extension.myTreeView && viewItem == archive"
+			},
+			{
+				"command": "extension.myTreeView.filterPanel.filter",
+				"title": "Filter Archive",
+				"shortTitle": "Filter",
+				"icon": "$(filter)",
+				"when": "view == extension.myTreeView"
+			},
+			{
+				"command": "extension.myTreeView.resetFilter",
+				"title": "Reset Filter",
+				"shortTitle": "Reset",
+				"enablement": "view == extension.myTreeView && extension.myTreeView.hasFilter",
+				"icon": "$(close)",
+				"when": "view == extension.myTreeView && extension.myTreeView.hasFilter"
+			}
+		],
+		"menus": {
+			"view/title": [
+				{
+					"command": "extension.myTreeView.filterPanel.filter",
+					"when": "view == extension.myTreeView",
+					"group": "navigation@1"
+				},
+				{
+					"command": "extension.myTreeView.resetFilter",
+					"when": "view == extension.myTreeView",
+					"group": "navigation@2"
+				}
+			],
+			"view/item/context": [
+				{
+					"command": "extension.myTreeView.downloadMostRecent",
+					"when": "view == extension.myTreeView && viewItem == archive",
+					"group": "inline@1"
+				},
+				{
+					"command": "extension.myTreeView.downloadFile",
+					"when": "view == extension.myTreeView && viewItem == file",
+					"group": "inline@1"
+				},
+				{
+					"command": "extension.myTreeView.delete",
+					"when": "view == extension.myTreeView && viewItem == archive",
+					"group": "inline@2"
+				}
+			]
+		},
+		"viewsContainers": {
+			"activitybar": [
+				{
+					"id": "myExtension",
+					"title": "TreeTest",
+					"icon": "$(list-tree)"
+				}
+			]
+		},
+		"views": {
+			"myExtension": [
+				{
+					"id": "extension.myTreeView",
+					"name": "Test",
+					"icon": "$(beaker)",
+					"type": "tree"
+				}
+			]
+		}
+	},
+	"scripts": {
+		"vscode:prepublish": "npm run package",
+		"compile": "webpack",
+		"watch": "webpack --watch",
+		"package": "webpack --mode production --devtool hidden-source-map",
+		"compile-tests": "tsc -p . --outDir out",
+		"watch-tests": "tsc -p . -w --outDir out",
+		"pretest": "npm run compile-tests && npm run compile && npm run lint",
+		"lint": "eslint src --ext ts",
+		"test": "node ./out/test/runTest.js"
+	},
+	"devDependencies": {
+		"@types/vscode": "^1.66.0",
+		"@types/glob": "^7.2.0",
+		"@types/mocha": "^9.1.0",
+		"@types/node": "14.x",
+		"@typescript-eslint/eslint-plugin": "^5.16.0",
+		"@typescript-eslint/parser": "^5.16.0",
+		"eslint": "^8.11.0",
+		"glob": "^7.2.0",
+		"mocha": "^9.2.2",
+		"typescript": "^4.5.5",
+		"ts-loader": "^9.2.8",
+		"webpack": "^5.70.0",
+		"webpack-cli": "^4.9.2",
+		"@vscode/test-electron": "^2.1.3"
+	}
+}
