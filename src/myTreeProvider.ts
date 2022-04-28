@@ -2,6 +2,10 @@
 import { commands, Disposable, Event, EventEmitter, ExtensionContext, MarkdownString, ProviderResult, TextDocument, ThemeIcon, TreeDataProvider, TreeItem, TreeItemCollapsibleState, Uri, window, workspace } from "vscode";
 import { randomUUID } from "crypto";
 import { FilterPanel } from "./filterPanel";
+import { TreeItemDecorationProvider } from "./decorationProvider";
+import * as os from 'os';
+import * as fs from 'fs';
+import * as path from 'path';
 
 let idx = 0;
 
@@ -26,10 +30,10 @@ class Archive {
             let fileIdx = 1;
             const rnd = Math.round(Math.random() * 5);
             for (let i = 0; i < rnd; i++) {
-                const file = new File(fileIdx++);
+                const file = new File(this.uuid, fileIdx++, files.length);
                 files.push(file);
             }
-            this.files = new FilesContainer(files);
+            this.files = new FilesContainer(this.uuid, files);
         }
     }
 }
@@ -41,7 +45,7 @@ class File {
     // fake content
     public readonly content: string = Math.random().toString(36).slice(2, 7);
 
-    constructor(idx: number) {
+    constructor(public readonly archiveId: string, idx: number, public readonly peers: number) {
         this.name = `File ${idx++}`;
     }
 }
@@ -75,7 +79,7 @@ class Description {
 // class represents the intermediary node
 class FilesContainer {
 
-    constructor(public files: File[]) {
+    constructor(public archiveId: string, public files: File[]) {
 
     }
 }
@@ -104,6 +108,13 @@ $(clock) ${data.lastUpdated}
         );
         this.iconPath = new ThemeIcon("archive");
         this.contextValue = this.data.hasDownloadableContent ? 'archiveWithFiles' : "archive";
+        let fileQueryString: string;
+        if (data.hasDownloadableContent) {
+            fileQueryString = `?count=${data.files?.files.length}`;
+        } else {
+            fileQueryString = "";
+        }
+        this.resourceUri = Uri.parse(`archive://${data.uuid}/${data.hasDownloadableContent}${fileQueryString}`);
     }
 }
 
@@ -119,6 +130,7 @@ class FilesNode extends TreeItem {
 
     constructor(
         label: string,
+        private readonly archiveId: string,
         public readonly files: FilesContainer
     ) {
         super(label, TreeItemCollapsibleState.Collapsed);
@@ -129,13 +141,15 @@ class FilesNode extends TreeItem {
 
 class FileNode extends TreeItem {
 
-    constructor(public readonly file: File) {
+    constructor(private readonly archiveId: string, public readonly file: File, public readonly peers: number) {
         super(file.name, TreeItemCollapsibleState.None);
         this.contextValue = "file";
         this.iconPath = new ThemeIcon("file-text");
         this.tooltip = new MarkdownString(`$(globe) ${file.uuid}
 ___
 $(book) ${file.content}`, true);
+
+        this.resourceUri = Uri.parse(`file://${archiveId}/${file.uuid}?name=${file.name}`);
     }
 }
 
@@ -245,6 +259,8 @@ export class TestTreeDataProvider implements TreeDataProvider<DomainObject>, Dis
     protected items: (Archive | LoadMore)[] = [];
     private filter: Filter | undefined;
 
+    private readonly decorationProvider: TreeItemDecorationProvider;
+
     constructor(
         context: ExtensionContext
     ) {
@@ -257,11 +273,13 @@ export class TestTreeDataProvider implements TreeDataProvider<DomainObject>, Dis
         this.disposables.push(commands.registerCommand(TestTreeDataProvider.DOWNLOAD_MOST_RECENT_COMMAND,
             this.downloadMostRecent.bind(this)));
         this.disposables.push(commands.registerCommand(TestTreeDataProvider.DOWNLOAD_SINGLE_FILE_COMMAND,
-            this.downloadFile));
-        this.disposables.push(commands.registerCommand(TestTreeDataProvider.DELETE_COMMAND, 
+            this.downloadFile.bind(this)));
+        this.disposables.push(commands.registerCommand(TestTreeDataProvider.DELETE_COMMAND,
             this.delete.bind(this)));
 
         this.disposables.push(new FilterPanel(context, this));
+        this.decorationProvider = new TreeItemDecorationProvider();
+        this.disposables.push(this.decorationProvider);
 
         this.disposables.forEach(d => context.subscriptions.push(d));
     }
@@ -274,9 +292,9 @@ export class TestTreeDataProvider implements TreeDataProvider<DomainObject>, Dis
         } else if (element instanceof Description) {
             return new DescriptionNode(element.description);
         } else if (element instanceof FilesContainer) {
-            return new FilesNode("files", element);
+            return new FilesNode("files", element.archiveId, element);
         } else if (element instanceof File) {
-            return new FileNode(element);
+            return new FileNode(element.archiveId, element, element.peers);
         }
         throw new Error(`Unsupported tree item ${JSON.stringify(element)}`);
     }
@@ -369,31 +387,40 @@ export class TestTreeDataProvider implements TreeDataProvider<DomainObject>, Dis
     }
 
     private async downloadFile(file: File): Promise<void> {
-        return window.showSaveDialog({
-            title: "Save file to ..."
-        }).then(async (uri: Uri | undefined) => {
-            if (uri) {
-                await workspace.fs.writeFile(uri, Buffer.from(file.content));
-                return uri;
-            }
-            return undefined;
-        }).then(async (uri: Uri | undefined) => {
-            if (uri) {
-                return workspace.openTextDocument(uri);
-            }
-            return;
-        }).then(async (doc: TextDocument | undefined) => {
-            if (doc) {
-                await window.showTextDocument(doc, undefined, false);
-            }
-        });
+        const config = workspace.getConfiguration('testtreeview');
+        const workspaceLoc = config.get<string>('workspace.path') || os.homedir();
+
+        if (!fs.existsSync(workspaceLoc)) {
+            fs.mkdirSync(workspaceLoc);
+        }
+        const archiveDir = path.join(workspaceLoc, file.archiveId);
+        if (!fs.existsSync(archiveDir)) {
+            fs.mkdirSync(archiveDir);
+        }
+        const fileUri = Uri.parse("file://" + path.join(archiveDir, file.name + ".txt"));
+        await workspace.fs.writeFile(fileUri, Buffer.from(file.content))
+            .then(() => workspace.openTextDocument(fileUri))
+            .then(async (doc: TextDocument | undefined) => {
+                if (doc) {
+                    await window.showTextDocument(doc, undefined, false);
+                }
+            });
+        
+        // simulate an update to the actual node done that causes the 'resourceUri' to change
+        const eventUri = Uri.parse(`file://${file.archiveId}/${file.uuid}?name=${file.name}`);
+        this.decorationProvider.updateDecoration(eventUri);
+        
+        const eventArchiveUri = Uri.parse(`archive://${file.archiveId}/true?count=${file.peers}`);
+        this.decorationProvider.updateDecoration(eventArchiveUri);
+
+        this._onDidChangeTreeData.fire();
     }
 
     public async delete(item: Archive): Promise<void> {
         const choice = await this.promptUserAction(`Do you really want to delete archive ${item.title}?`, 'Yes', 'No');
         if (choice === 'Yes') {
             // Determining index of item to delte
-            const idx = this.items.findIndex(_item => 
+            const idx = this.items.findIndex(_item =>
                 _item                                 // item may have been deleted before
                 && _item instanceof Archive           // we are only interested in archives
                 && _item.uuid === item.uuid);         // and that the UUID matches the one provided as input

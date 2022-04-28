@@ -25,6 +25,16 @@
 	],
 	"main": "./dist/extension.js",
 	"contributes": {
+		"configuration": {
+			"title": "testtreeview",
+			"properties": {
+				"testtreeview.workspace.path": {
+					"type": "string",
+					"default": "",
+					"description": "Workspace directory where files are stored by default"
+				}
+			}
+		},
 		"commands": [
 			{
 				"command": "testtreeview.helloWorld",
